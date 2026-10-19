@@ -3,15 +3,37 @@ name: Visual Regression
 on:
   push:
     branches: [main, develop]
+    paths: ["frontend/**", ".github/workflows/visual-regression.yml"]
   pull_request:
     branches: [main, develop]
+    paths: ["frontend/**", ".github/workflows/visual-regression.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  visual-regression:
-    name: Screenshot diff check
+  visual-smoke:
+    name: Rendered UI smoke
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - name: Visual regression check
-        run: echo "Screenshot diff check passed successfully"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-smoke-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
